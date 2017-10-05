@@ -5,5 +5,7 @@
 *sdk.launch
 build.sh
 
-build-dji_sdk-*/
+build-*/
 dji_sdk/CMakeLists\.txt\.user
+
+dji_sdk_demo/CMakeLists\.txt\.user
