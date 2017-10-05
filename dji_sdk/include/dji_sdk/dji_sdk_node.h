@@ -19,6 +19,7 @@
 //! ROS standard msgs
 #include <geometry_msgs/Quaternion.h>
 #include <geometry_msgs/Vector3Stamped.h>
+#include <mav_msgs/RollPitchYawrateThrust.h>
 #include <sensor_msgs/Imu.h>
 #include <sensor_msgs/NavSatFix.h>
 #include <sensor_msgs/Joy.h>
@@ -124,6 +125,9 @@ private:
 
   void flightControlRollPitchPzYawrateCallback(
     const sensor_msgs::Joy::ConstPtr& pMsg);
+
+  void flightControlRollPitchThrustYawrateCallback(
+    const mav_msgs::RollPitchYawrateThrustConstPtr& pMsg);
 
   //! general subscriber callbacks
   void gimbalAngleCtrlCallback(const dji_sdk::Gimbal::ConstPtr& msg);
@@ -268,6 +272,7 @@ private:
   ros::Subscriber flight_control_position_yaw_sub;
   ros::Subscriber flight_control_velocity_yawrate_sub;
   ros::Subscriber flight_control_rollpitch_yawrate_vertpos_sub;
+  ros::Subscriber flight_control_rollpitch_yawrate_thr_sub;
 
   //! general subscribers
   ros::Subscriber gimbal_angle_cmd_subscriber;

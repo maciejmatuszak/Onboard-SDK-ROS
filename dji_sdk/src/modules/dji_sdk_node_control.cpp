@@ -181,3 +181,21 @@ DJISDKNode::flightControlRollPitchPzYawrateCallback(
   flightControl(flag, roll, pitch, pz, yawRate);
 }
 
+void
+DJISDKNode::flightControlRollPitchThrustYawrateCallback(
+        const mav_msgs::RollPitchYawrateThrustConstPtr& pMsg)
+{
+  uint8_t flag = (Control::VERTICAL_THRUST |
+                  Control::HORIZONTAL_ANGLE |
+                  Control::YAW_RATE |
+                  Control::HORIZONTAL_BODY |
+                  Control::STABLE_ENABLE);
+
+  float roll      = pMsg->roll;     //[rad]
+  float pitch     = pMsg->pitch;    //[rad]
+  float thz       = pMsg->thrust.z; //[%]
+  float yawRate   = pMsg->yaw_rate; //[rad/sec]
+
+  flightControl(flag, roll, pitch, thz, yawRate);
+}
+

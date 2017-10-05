@@ -4,3 +4,6 @@
 *.swp
 *sdk.launch
 build.sh
+
+build-dji_sdk-*/
+dji_sdk/CMakeLists\.txt\.user

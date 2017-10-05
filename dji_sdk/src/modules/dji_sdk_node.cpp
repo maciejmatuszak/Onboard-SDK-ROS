@@ -186,6 +186,11 @@ DJISDKNode::initFlightControl(ros::NodeHandle& nh)
       "dji_sdk/flight_control_setpoint_rollpitch_yawrate_zposition", 10,
       &DJISDKNode::flightControlRollPitchPzYawrateCallback, this);
 
+  flight_control_rollpitch_yawrate_thr_sub =
+    nh.subscribe<mav_msgs::RollPitchYawrateThrust>(
+      "dji_sdk/flight_control_setpoint_rollpitch_yawrate_thrust", 10,
+      &DJISDKNode::flightControlRollPitchThrustYawrateCallback, this);
+
   return true;
 }
 
