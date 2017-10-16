@@ -189,7 +189,7 @@ DJISDKNode::flightControlRollPitchThrustYawrateCallback(
                   Control::HORIZONTAL_ANGLE |
                   Control::YAW_RATE |
                   Control::HORIZONTAL_BODY |
-                  Control::STABLE_ENABLE);
+                  Control::STABLE_DISABLE);
 
   float roll      = pMsg->roll;     //[rad]
   float pitch     = pMsg->pitch;    //[rad]
