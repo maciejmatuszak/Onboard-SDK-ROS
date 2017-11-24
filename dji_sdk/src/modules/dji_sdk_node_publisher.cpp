@@ -427,8 +427,65 @@ DJISDKNode::publish50HzData(Vehicle* vehicle, RecvContainer recvFrame,
     rc_joy.axes.push_back(static_cast<float>(vehicle->broadcast->getRC().mode));
     rc_joy.axes.push_back(static_cast<float>(vehicle->broadcast->getRC().gear));
     p->rc_publisher.publish(rc_joy);
+    if(p->use_gear_sw_for_authority_ctrl)
+    {
+        bool want_ctrk_auth = (vehicle->broadcast->getRC().gear > -7000.0);
+
+        if(p->have_control_authority == false &&  want_ctrk_auth == true)
+        {
+            ROS_INFO("Async call to obtain control authority");
+            vehicle->obtainCtrlAuthority(DJISDKNode::obtainCtrlAuthCallback, p);
+        }
+        else if(p->have_control_authority == true && want_ctrk_auth == false )
+        {
+            ROS_INFO("Async call to release control authority");
+            vehicle->releaseCtrlAuthority(DJISDKNode::releaseCtrlAuthCallback, p);
+        }
+    }
   }
 
+}
+
+void
+DJISDKNode::obtainCtrlAuthCallback(Vehicle *vehicle, RecvContainer recvFrame,
+                                  DJI::OSDK::UserData userData)
+{
+    DJISDKNode *p = (DJISDKNode *)userData;
+
+    ACK::ErrorCode ack;
+    ack.info = recvFrame.recvInfo;
+    ack.data = recvFrame.recvData.ack;
+
+    if (ACK::getError(ack) != ACK::SUCCESS)
+    {
+        ACK::getErrorCodeMessage(ack, __func__);
+    }
+    else //SUCCESS
+    {
+        ROS_INFO("Async call to obtain control authority SUCCESS");
+        p->have_control_authority = true;
+    }
+}
+
+void
+DJISDKNode::releaseCtrlAuthCallback(Vehicle *vehicle, RecvContainer recvFrame,
+                                  DJI::OSDK::UserData userData)
+{
+    DJISDKNode *p = (DJISDKNode *)userData;
+
+    ACK::ErrorCode ack;
+    ack.info = recvFrame.recvInfo;
+    ack.data = recvFrame.recvData.ack;
+
+    if (ACK::getError(ack) != ACK::SUCCESS)
+    {
+        ACK::getErrorCodeMessage(ack, __func__);
+    }
+    else //SUCCESS
+    {
+        ROS_INFO("Async call to release control authority SUCCESS");
+        p->have_control_authority = false;
+    }
 }
 
 void

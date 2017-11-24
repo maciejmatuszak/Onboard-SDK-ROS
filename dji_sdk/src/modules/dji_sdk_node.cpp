@@ -28,7 +28,9 @@ DJISDKNode::DJISDKNode(ros::NodeHandle& nh, ros::NodeHandle& nh_private)
   nh_private.param("gravity_const", gravity_const, 9.801);
   nh_private.param("align_time",    align_time_with_FC, true);
   nh_private.param("use_broadcast", user_select_BC, false);
+  nh_private.param("use_gear_sw_for_authority_ctrl", use_gear_sw_for_authority_ctrl, false);
 
+  have_control_authority = false;
   //! Default values for local Position
   local_pos_ref_latitude = local_pos_ref_longitude = local_pos_ref_altitude = 0;
   local_pos_ref_set = false;

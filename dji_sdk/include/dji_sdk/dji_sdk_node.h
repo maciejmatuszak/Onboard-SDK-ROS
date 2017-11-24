@@ -228,6 +228,12 @@ private:
                                RecvContainer       recvFrame,
                                DJI::OSDK::UserData userData);
 
+  static void obtainCtrlAuthCallback(Vehicle *vehicle,
+                                     RecvContainer recvFrame,
+                                     DJI::OSDK::UserData userData);
+  static void releaseCtrlAuthCallback(Vehicle *vehicle,
+                                     RecvContainer recvFrame,
+                                     DJI::OSDK::UserData userData);
 private:
   //! OSDK core
   Vehicle* vehicle;
@@ -310,6 +316,8 @@ private:
   std::string app_bundle_id; // reserved
   int         uart_or_usb;
   double      gravity_const;
+  bool use_gear_sw_for_authority_ctrl;
+  bool have_control_authority;
 
   //! use broadcast or subscription to get telemetry data
   TELEMETRY_TYPE telemetry_from_fc;

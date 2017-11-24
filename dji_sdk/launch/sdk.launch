@@ -8,5 +8,8 @@
     <param name="align_time" type="bool" value="false"/>
     <param name="enc_key" type="string" value="your app key here"/>
     <param name="use_broadcast" type="bool" value="false"/>
+    
+    <!-- use gear switch to gain control authority: up - obtain authority, down - release authority -->
+    <param name="use_gear_sw_for_authority_ctrl" type="bool" value="false"/>
     </node>
 </launch>

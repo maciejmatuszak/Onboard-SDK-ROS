@@ -116,6 +116,8 @@ DJISDKNode::sdkCtrlAuthorityCallback(
   else
   {
     response.result = true;
+    have_control_authority = request.control_enable;
+
   }
 
   return true;
