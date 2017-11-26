@@ -450,7 +450,6 @@ DJISDKNode::publish50HzData(Vehicle* vehicle, RecvContainer recvFrame,
         }
         else
         {
-			ROS_INFO("control authority in progress");
             p->authority_control_in_progress_counter++;
         }
 
