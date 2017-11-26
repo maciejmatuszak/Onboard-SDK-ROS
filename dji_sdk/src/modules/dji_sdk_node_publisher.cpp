@@ -455,7 +455,7 @@ DJISDKNode::publish50HzData(Vehicle* vehicle, RecvContainer recvFrame,
         }
 
         //joy messages come at 50Hz we use this as simple timeout
-        if(p->authority_control_in_progress_counter > 200)
+        if(p->authority_control_in_progress_counter > 20)
         {
             ROS_ERROR("Async call to obtain control authority timed out");
             p->authority_control_in_progress_counter = 0;
