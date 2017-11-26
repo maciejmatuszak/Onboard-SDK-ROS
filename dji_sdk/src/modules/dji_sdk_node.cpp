@@ -31,6 +31,8 @@ DJISDKNode::DJISDKNode(ros::NodeHandle& nh, ros::NodeHandle& nh_private)
   nh_private.param("use_gear_sw_for_authority_ctrl", use_gear_sw_for_authority_ctrl, false);
 
   have_control_authority = false;
+  authority_control_in_progress_counter = 0;
+
   //! Default values for local Position
   local_pos_ref_latitude = local_pos_ref_longitude = local_pos_ref_altitude = 0;
   local_pos_ref_set = false;

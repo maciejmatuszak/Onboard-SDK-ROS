@@ -317,7 +317,11 @@ private:
   int         uart_or_usb;
   double      gravity_const;
   bool use_gear_sw_for_authority_ctrl;
+
+  //Indicate that SDK currently have authotity control
   bool have_control_authority;
+  //if >0 indicates the authotity control change is in progress
+  uint32_t authority_control_in_progress_counter;
 
   //! use broadcast or subscription to get telemetry data
   TELEMETRY_TYPE telemetry_from_fc;

@@ -429,17 +429,35 @@ DJISDKNode::publish50HzData(Vehicle* vehicle, RecvContainer recvFrame,
     p->rc_publisher.publish(rc_joy);
     if(p->use_gear_sw_for_authority_ctrl)
     {
-        bool want_ctrk_auth = (vehicle->broadcast->getRC().gear > -7000.0);
 
-        if(p->have_control_authority == false &&  want_ctrk_auth == true)
+
+        if(p->authority_control_in_progress_counter == 0)
         {
-            ROS_INFO("Async call to obtain control authority");
-            vehicle->obtainCtrlAuthority(DJISDKNode::obtainCtrlAuthCallback, p);
+            bool want_ctrk_auth = (vehicle->broadcast->getRC().gear > -7000.0);
+
+            if(p->have_control_authority == false &&  want_ctrk_auth == true)
+            {
+                p->authority_control_in_progress_counter++;
+                ROS_INFO("Async call to obtain control authority");
+                vehicle->obtainCtrlAuthority(DJISDKNode::obtainCtrlAuthCallback, p);
+            }
+            else if(p->have_control_authority == true && want_ctrk_auth == false )
+            {
+                p->authority_control_in_progress_counter++;
+                ROS_INFO("Async call to release control authority");
+                vehicle->releaseCtrlAuthority(DJISDKNode::releaseCtrlAuthCallback, p);
+            }
         }
-        else if(p->have_control_authority == true && want_ctrk_auth == false )
+        else
         {
-            ROS_INFO("Async call to release control authority");
-            vehicle->releaseCtrlAuthority(DJISDKNode::releaseCtrlAuthCallback, p);
+            p->authority_control_in_progress_counter++;
+        }
+
+        //joy messages come at 50Hz we use this as simple timeout
+        if(p->authority_control_in_progress_counter > 10)
+        {
+            ROS_ERROR("Async call to obtain control authority timed out");
+            p->authority_control_in_progress_counter = 0;
         }
     }
   }
@@ -464,6 +482,7 @@ DJISDKNode::obtainCtrlAuthCallback(Vehicle *vehicle, RecvContainer recvFrame,
     {
         ROS_INFO("Async call to obtain control authority SUCCESS");
         p->have_control_authority = true;
+        p->authority_control_in_progress_counter = 0;
     }
 }
 
@@ -485,6 +504,7 @@ DJISDKNode::releaseCtrlAuthCallback(Vehicle *vehicle, RecvContainer recvFrame,
     {
         ROS_INFO("Async call to release control authority SUCCESS");
         p->have_control_authority = false;
+        p->authority_control_in_progress_counter = 0;
     }
 }
 
