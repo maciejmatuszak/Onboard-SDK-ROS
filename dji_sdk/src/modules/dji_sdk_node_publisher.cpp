@@ -450,11 +450,12 @@ DJISDKNode::publish50HzData(Vehicle* vehicle, RecvContainer recvFrame,
         }
         else
         {
+			ROS_INFO("control authority in progress");
             p->authority_control_in_progress_counter++;
         }
 
         //joy messages come at 50Hz we use this as simple timeout
-        if(p->authority_control_in_progress_counter > 10)
+        if(p->authority_control_in_progress_counter > 200)
         {
             ROS_ERROR("Async call to obtain control authority timed out");
             p->authority_control_in_progress_counter = 0;
@@ -470,6 +471,8 @@ DJISDKNode::obtainCtrlAuthCallback(Vehicle *vehicle, RecvContainer recvFrame,
 {
     DJISDKNode *p = (DJISDKNode *)userData;
 
+	ROS_INFO("Async call to obtain control authority callback ...");
+
     ACK::ErrorCode ack;
     ack.info = recvFrame.recvInfo;
     ack.data = recvFrame.recvData.ack;
@@ -480,10 +483,10 @@ DJISDKNode::obtainCtrlAuthCallback(Vehicle *vehicle, RecvContainer recvFrame,
     }
     else //SUCCESS
     {
-        ROS_INFO("Async call to obtain control authority SUCCESS");
-        p->have_control_authority = true;
-        p->authority_control_in_progress_counter = 0;
+        ROS_INFO("Async call to obtain control authority callback SUCCESS");
+        p->have_control_authority = true;        
     }
+    p->authority_control_in_progress_counter = 0;
 }
 
 void
@@ -492,7 +495,9 @@ DJISDKNode::releaseCtrlAuthCallback(Vehicle *vehicle, RecvContainer recvFrame,
 {
     DJISDKNode *p = (DJISDKNode *)userData;
 
-    ACK::ErrorCode ack;
+	ROS_INFO("Async call to release control authority callback ...");
+	
+	ACK::ErrorCode ack;
     ack.info = recvFrame.recvInfo;
     ack.data = recvFrame.recvData.ack;
 
@@ -502,10 +507,10 @@ DJISDKNode::releaseCtrlAuthCallback(Vehicle *vehicle, RecvContainer recvFrame,
     }
     else //SUCCESS
     {
-        ROS_INFO("Async call to release control authority SUCCESS");
+        ROS_INFO("Async call to release control authority callback SUCCESS");
         p->have_control_authority = false;
-        p->authority_control_in_progress_counter = 0;
     }
+    p->authority_control_in_progress_counter = 0;
 }
 
 void
