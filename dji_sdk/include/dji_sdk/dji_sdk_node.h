@@ -316,6 +316,10 @@ private:
   std::string app_bundle_id; // reserved
   int         uart_or_usb;
   double      gravity_const;
+  double      thrust_coefficient;
+  double      thrust_offset;
+  double      thrust_min;
+  double      thrust_max;
   bool use_gear_sw_for_authority_ctrl;
 
   //Indicate that SDK currently have authotity control

@@ -17,7 +17,11 @@ DJISDKNode::DJISDKNode(ros::NodeHandle& nh, ros::NodeHandle& nh_private)
   : telemetry_from_fc(USE_BROADCAST),
     R_FLU2FRD(tf::Matrix3x3(1,  0,  0, 0, -1,  0, 0,  0, -1)),
     R_ENU2NED(tf::Matrix3x3(0,  1,  0, 1,  0,  0, 0,  0, -1)),
-    curr_align_state(UNALIGNED)
+    curr_align_state(UNALIGNED),
+    thrust_coefficient(1),
+    thrust_offset(0),
+    thrust_min(10),
+    thrust_max(100)
 {
   nh_private.param("serial_name",   serial_device, std::string("/dev/ttyUSB0"));
   nh_private.param("baud_rate",     baud_rate, 921600);
@@ -28,6 +32,10 @@ DJISDKNode::DJISDKNode(ros::NodeHandle& nh, ros::NodeHandle& nh_private)
   nh_private.param("gravity_const", gravity_const, 9.801);
   nh_private.param("align_time",    align_time_with_FC, true);
   nh_private.param("use_broadcast", user_select_BC, false);
+  nh_private.param("thrust_coefficient", thrust_coefficient, thrust_coefficient);
+  nh_private.param("thrust_offset", thrust_offset, thrust_coefficient);
+  nh_private.param("thrust_min", thrust_min, thrust_min);
+  nh_private.param("thrust_max", thrust_max, thrust_max);
   nh_private.param("use_gear_sw_for_authority_ctrl", use_gear_sw_for_authority_ctrl, false);
 
   have_control_authority = false;
