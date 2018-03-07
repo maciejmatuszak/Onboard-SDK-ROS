@@ -34,8 +34,8 @@ DJISDKNode::DJISDKNode(ros::NodeHandle& nh, ros::NodeHandle& nh_private)
   nh_private.param("use_broadcast", user_select_BC, false);
   nh_private.param("thrust_coefficient", thrust_coefficient, thrust_coefficient);
   nh_private.param("thrust_offset", thrust_offset, thrust_coefficient);
-  nh_private.param("thrust_min", thrust_min, thrust_min);
-  nh_private.param("thrust_max", thrust_max, thrust_max);
+  nh_private.param("thrust_min",    thrust_min, thrust_min);
+  nh_private.param("thrust_max",    thrust_max, thrust_max);
   nh_private.param("use_gear_sw_for_authority_ctrl", use_gear_sw_for_authority_ctrl, false);
 
   have_control_authority = false;
