@@ -193,9 +193,21 @@ DJISDKNode::flightControlRollPitchThrustYawrateCallback(
 
   float roll      = pMsg->roll;     //[rad]
   float pitch     = pMsg->pitch;    //[rad]
-  float thz       = pMsg->thrust.z; //[%]
+  float thz       = (pMsg->thrust.z * thrust_coefficient) + thrust_offset; // this transforms it from Force in[N] to thrust in[%]
   float yawRate   = pMsg->yaw_rate; //[rad/sec]
 
+  if(thz < thrust_min){
+    ROS_WARN_THROTTLE(0.1, "Throttle command is below minimum: %f.. set to minimum: %f", thz, thrust_min);
+    thz = thrust_min;
+  }
+  if(thz > thrust_max){
+    ROS_WARN_THROTTLE(0.1, "Throttle command is too high: %f.. set to max: %f", thz, thrust_max);
+    thz = thrust_max;
+  }
+
   flightControl(flag, roll, pitch, thz, yawRate);
+  std_msgs::Float32 throttle;
+  throttle.data = thz;
+  scaled_throttle_publisher.publish(throttle);
 }
 

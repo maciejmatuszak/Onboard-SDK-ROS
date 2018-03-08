@@ -9,6 +9,15 @@
     <param name="enc_key" type="string" value="your app key here"/>
     <param name="use_broadcast" type="bool" value="false"/>
     
+    <!-- Thrust manipulation cooficients. Those are used for thrust command comming from RollPitchThrustYawrate command. -->
+	<!-- The value of msg.thrust.z is expected in [Newtons] to transform it to Thrust a linear transformation is used:   -->
+	<!-- thrust = msg.thrust.z * thrust_coefficient + thrust_offset; -->
+	<!-- additionally the thrust is limited by thrust_min and thrust_max -->
+	<param name="thrust_coefficient" type="double" value="2.7525"/>
+	<param name="thrust_offset"      type="double" value="-18.3583"/>
+	<param name="thrust_min"         type="double" value="10.0"/>
+	<param name="thrust_max"                type="double" value="100.0"/>
+    
     <!-- use gear switch to gain control authority: up - obtain authority, down - release authority -->
     <param name="use_gear_sw_for_authority_ctrl" type="bool" value="false"/>
     </node>

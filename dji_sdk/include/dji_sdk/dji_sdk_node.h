@@ -301,6 +301,7 @@ private:
   ros::Publisher rc_publisher;
   //! Local Position Publisher (Publishes local position in ENU frame)
   ros::Publisher local_position_publisher;
+  ros::Publisher scaled_throttle_publisher;
 
   //! constant
   const int WAIT_TIMEOUT           = 10;
@@ -316,6 +317,10 @@ private:
   std::string app_bundle_id; // reserved
   int         uart_or_usb;
   double      gravity_const;
+  double      thrust_coefficient;
+  double      thrust_offset;
+  double      thrust_min;
+  double      thrust_max;
   bool use_gear_sw_for_authority_ctrl;
 
   //Indicate that SDK currently have authotity control
