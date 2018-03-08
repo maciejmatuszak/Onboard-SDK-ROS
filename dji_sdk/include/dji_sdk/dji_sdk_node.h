@@ -301,6 +301,7 @@ private:
   ros::Publisher rc_publisher;
   //! Local Position Publisher (Publishes local position in ENU frame)
   ros::Publisher local_position_publisher;
+  ros::Publisher scaled_throttle_publisher;
 
   //! constant
   const int WAIT_TIMEOUT           = 10;

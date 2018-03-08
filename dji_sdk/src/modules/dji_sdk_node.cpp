@@ -295,6 +295,8 @@ DJISDKNode::initPublisher(ros::NodeHandle& nh)
   local_position_publisher =
       nh.advertise<geometry_msgs::PointStamped>("dji_sdk/local_position", 10);
 
+  scaled_throttle_publisher = nh.advertise<std_msgs::Float32>("dji_sdk/scaled_throttle", 10);
+
   if (telemetry_from_fc == USE_BROADCAST)
   {
     ACK::ErrorCode broadcast_set_freq_ack;
