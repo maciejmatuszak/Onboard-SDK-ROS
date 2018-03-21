@@ -44,6 +44,8 @@ DJISDKNode::DJISDKNode(ros::NodeHandle& nh, ros::NodeHandle& nh_private)
   //! Default values for local Position
   local_pos_ref_latitude = local_pos_ref_longitude = local_pos_ref_altitude = 0;
   local_pos_ref_set = false;
+  //! RTK support check
+  rtkSupport = false;
 
   // @todo need some error handling for init functions
   //! @note parsing launch file to get environment parameters
@@ -92,6 +94,13 @@ bool
 DJISDKNode::initVehicle(ros::NodeHandle& nh_private)
 {
   bool threadSupport = true;
+  bool enable_advanced_sensing = false;
+
+#ifdef ADVANCED_SENSING
+  enable_advanced_sensing = true;
+  ROS_INFO("Advanced Sensing is Enabled on M210.");
+#endif
+
   LinuxSerialDevice* linuxSerialDevice = new LinuxSerialDevice(serial_device.c_str(),baud_rate);
   linuxSerialDevice->init();
   bool setupStatus = validateSerialDevice(linuxSerialDevice);
@@ -106,21 +115,8 @@ DJISDKNode::initVehicle(ros::NodeHandle& nh_private)
   }
 
   //! @note currently does not work without thread support
-  vehicle = new Vehicle(serial_device.c_str(), baud_rate, threadSupport);
+  vehicle = new Vehicle(serial_device.c_str(), baud_rate, threadSupport, enable_advanced_sensing);
 
-  // This version of ROS Node works for:
-  //    1. A3/N3/M600 with latest FW
-  //    2. M100 with FW version M100_31
-  if(vehicle->getFwVersion() < mandatoryVersionBase && (!isM100()))
-  {
-    return false;
-  }
-
-  if(!isM100())
-  {
-    for(int i = 0; i < MAX_SUBSCRIBE_PACKAGES; i++)
-      vehicle->subscribe->removePackage(i, WAIT_TIMEOUT);
-  }
   /*!
    * @note activate the drone for the user at the beginning
    *        user can also call it as a service
@@ -132,6 +128,17 @@ DJISDKNode::initVehicle(ros::NodeHandle& nh_private)
     return false;
   }
   ROS_INFO("drone activated");
+
+  // This version of ROS Node works for:
+  //    1. A3/N3/M600 with latest FW
+  //    2. M100 with FW version M100_31
+  if(vehicle->getFwVersion() > INVALID_VERSION
+      && vehicle->getFwVersion() < mandatoryVersionBase
+      && (!isM100()))
+  {
+    return false;
+  }
+
 
   if (NULL != vehicle->subscribe && (!user_select_BC))
   {
@@ -164,6 +171,13 @@ bool DJISDKNode::initServices(ros::NodeHandle& nh) {
   send_to_mobile_server     = nh.advertiseService("dji_sdk/send_data_to_mobile",            &DJISDKNode::sendToMobileCallback,           this);
   query_version_server      = nh.advertiseService("dji_sdk/query_drone_version",            &DJISDKNode::queryVersionCallback,           this);
   local_pos_ref_server      = nh.advertiseService("dji_sdk/set_local_pos_ref",              &DJISDKNode::setLocalPosRefCallback,         this);
+
+#ifdef ADVANCED_SENSING
+  subscribe_stereo_240p_server  = nh.advertiseService("dji_sdk/stereo_240p_subscription",   &DJISDKNode::stereo240pSubscriptionCallback, this);
+  subscribe_stereo_depth_server = nh.advertiseService("dji_sdk/stereo_depth_subscription",  &DJISDKNode::stereoDepthSubscriptionCallback,this);
+  subscribe_stereo_vga_server   = nh.advertiseService("dji_sdk/stereo_vga_subscription",    &DJISDKNode::stereoVGASubscriptionCallback,  this);
+  camera_stream_server          = nh.advertiseService("dji_sdk/setup_camera_stream",        &DJISDKNode::setupCameraStreamCallback,      this);
+#endif
 
   // A3/N3 only
   if(!isM100())
@@ -208,8 +222,9 @@ DJISDKNode::initFlightControl(ros::NodeHandle& nh)
 
 bool DJISDKNode::isM100()
 {
-  return(vehicle->getFwVersion() == Version::M100_31);
+  return(vehicle->isM100());
 }
+
 
 ACK::ErrorCode
 DJISDKNode::activate(int l_app_id, std::string l_enc_key)
@@ -294,6 +309,55 @@ DJISDKNode::initPublisher(ros::NodeHandle& nh)
 
   local_position_publisher =
       nh.advertise<geometry_msgs::PointStamped>("dji_sdk/local_position", 10);
+
+  local_frame_ref_publisher =
+      nh.advertise<sensor_msgs::NavSatFix>("dji_sdk/local_frame_ref", 10, true);
+
+  rtk_position_publisher =
+      nh.advertise<sensor_msgs::NavSatFix>("dji_sdk/rtk_position", 10);
+
+  rtk_velocity_publisher =
+      nh.advertise<geometry_msgs::Vector3>("dji_sdk/rtk_velocity", 10);
+
+  rtk_yaw_publisher =
+      nh.advertise<std_msgs::Int16>("dji_sdk/rtk_yaw", 10);
+
+  rtk_position_info_publisher =
+      nh.advertise<std_msgs::UInt8>("dji_sdk/rtk_info_position", 10);
+
+  rtk_yaw_info_publisher =
+      nh.advertise<std_msgs::UInt8>("dji_sdk/rtk_info_yaw", 10);
+
+#ifdef ADVANCED_SENSING
+  stereo_240p_front_left_publisher =
+    nh.advertise<sensor_msgs::Image>("dji_sdk/stereo_240p_front_left_images", 10);
+
+  stereo_240p_front_right_publisher =
+    nh.advertise<sensor_msgs::Image>("dji_sdk/stereo_240p_front_right_images", 10);
+
+  stereo_240p_down_front_publisher =
+    nh.advertise<sensor_msgs::Image>("dji_sdk/stereo_240p_down_front_images", 10);
+
+  stereo_240p_down_back_publisher =
+    nh.advertise<sensor_msgs::Image>("dji_sdk/stereo_240p_down_back_images", 10);
+
+  stereo_240p_front_depth_publisher =
+    nh.advertise<sensor_msgs::Image>("dji_sdk/stereo_240p_front_depth_images", 10);
+
+  stereo_vga_front_left_publisher =
+    nh.advertise<sensor_msgs::Image>("dji_sdk/stereo_vga_front_left_images", 10);
+
+  stereo_vga_front_right_publisher =
+    nh.advertise<sensor_msgs::Image>("dji_sdk/stereo_vga_front_right_images", 10);
+
+  main_camera_stream_publisher =
+    nh.advertise<sensor_msgs::Image>("dji_sdk/main_camera_images", 10);
+
+  fpv_camera_stream_publisher =
+    nh.advertise<sensor_msgs::Image>("dji_sdk/fpv_camera_images", 10);
+#endif
+
+
 
   scaled_throttle_publisher = nh.advertise<std_msgs::Float32>("dji_sdk/scaled_throttle", 10);
 
@@ -385,7 +449,7 @@ DJISDKNode::initDataSubscribeFromFC()
     if (ACK::getError(ack))
     {
       vehicle->subscribe->removePackage(PACKAGE_ID_100HZ, WAIT_TIMEOUT);
-      ROS_ERROR("Failed to start 100Hz mpackage");
+      ROS_ERROR("Failed to start 100Hz package");
       return false;
     }
     else
@@ -398,6 +462,7 @@ DJISDKNode::initDataSubscribeFromFC()
   // 50 Hz package from FC
   Telemetry::TopicName topicList50Hz[] = {
     Telemetry::TOPIC_GPS_FUSED,
+    Telemetry::TOPIC_ALTITUDE_FUSIONED,
     Telemetry::TOPIC_HEIGHT_FUSION,
     Telemetry::TOPIC_STATUS_FLIGHT,
     Telemetry::TOPIC_STATUS_DISPLAYMODE,
@@ -425,29 +490,69 @@ DJISDKNode::initDataSubscribeFromFC()
     }
   }
 
-  // 10 Hz package from FC
-  Telemetry::TopicName topicList10Hz[] = {
-          Telemetry::TOPIC_GPS_DATE,
-          Telemetry::TOPIC_GPS_TIME,
-          Telemetry::TOPIC_GPS_POSITION,
-          Telemetry::TOPIC_GPS_VELOCITY,
-          Telemetry::TOPIC_GPS_DETAILS,
-          Telemetry::TOPIC_BATTERY_INFO
+  //! Check if RTK is supported in the FC
+
+  Telemetry::TopicName topicRTKSupport[] =
+  {
+    Telemetry::TOPIC_RTK_POSITION
   };
-  int nTopic10Hz = sizeof(topicList10Hz) /sizeof(topicList10Hz[0]);
-  if (vehicle->subscribe->initPackageFromTopicList(PACKAGE_ID_10HZ, nTopic10Hz,
-                                                   topicList10Hz, 1, 10))
+
+  int nTopicRTKSupport    = sizeof(topicRTKSupport)/sizeof(topicRTKSupport[0]);
+  if (vehicle->subscribe->initPackageFromTopicList(PACKAGE_ID_10HZ, nTopicRTKSupport,
+                                                   topicRTKSupport, 1, 10))
   {
     ack = vehicle->subscribe->startPackage(PACKAGE_ID_10HZ, WAIT_TIMEOUT);
-    if(ACK::getError(ack))
+    if (ack.data == ErrorCode::SubscribeACK::SOURCE_DEVICE_OFFLINE)
     {
-      vehicle->subscribe->removePackage(PACKAGE_ID_10HZ, WAIT_TIMEOUT);
-      ROS_ERROR("Failed to start 10Hz package");
-      return false;
+      rtkSupport = false;
+      ROS_INFO("Flight Controller does not support RTK");
     }
     else
     {
-      vehicle->subscribe->registerUserPackageUnpackCallback(PACKAGE_ID_10HZ, publish10HzData, this);
+      rtkSupport = true;
+      vehicle->subscribe->removePackage(PACKAGE_ID_10HZ, WAIT_TIMEOUT);
+    }
+  }
+
+
+  if(!rtkSupport)
+  {
+  // 10 Hz package from FC
+    Telemetry::TopicName topicList10Hz[] =
+    {
+      Telemetry::TOPIC_GPS_DATE,
+      Telemetry::TOPIC_GPS_TIME,
+      Telemetry::TOPIC_GPS_POSITION,
+      Telemetry::TOPIC_GPS_VELOCITY,
+      Telemetry::TOPIC_GPS_DETAILS,
+      Telemetry::TOPIC_BATTERY_INFO
+    };
+    bool topicStartSuccess = topic10hzStart(topicList10Hz, sizeof(topicList10Hz));
+    if(topicStartSuccess == false)
+    {
+      return false;
+    }
+  }
+  else
+  {
+    Telemetry::TopicName topicList10Hz[] =
+    {
+      Telemetry::TOPIC_GPS_DATE,
+      Telemetry::TOPIC_GPS_TIME,
+      Telemetry::TOPIC_GPS_POSITION,
+      Telemetry::TOPIC_GPS_VELOCITY,
+      Telemetry::TOPIC_GPS_DETAILS,
+      Telemetry::TOPIC_BATTERY_INFO,
+      Telemetry::TOPIC_RTK_POSITION,
+      Telemetry::TOPIC_RTK_VELOCITY,
+      Telemetry::TOPIC_RTK_YAW,
+      Telemetry::TOPIC_RTK_YAW_INFO,
+      Telemetry::TOPIC_RTK_POSITION_INFO
+    };
+    bool packageStart = topic10hzStart(topicList10Hz, sizeof(topicList10Hz));
+    if(packageStart == false)
+    {
+      return false;
     }
   }
 
@@ -472,7 +577,29 @@ DJISDKNode::initDataSubscribeFromFC()
     }
   }
 
+  ros::Duration(1).sleep();
   return true;
+}
+
+bool DJISDKNode::topic10hzStart(Telemetry::TopicName topicList10Hz[], int sizeOfArray)
+{
+  int nTopic10Hz = sizeOfArray / sizeof(topicList10Hz[0]);
+  if (vehicle->subscribe->initPackageFromTopicList(PACKAGE_ID_10HZ, nTopic10Hz,
+                                                   topicList10Hz, 1, 10))
+  {
+    ACK::ErrorCode ack = vehicle->subscribe->startPackage(PACKAGE_ID_10HZ, WAIT_TIMEOUT);
+    if (ACK::getError(ack))
+    {
+      vehicle->subscribe->removePackage(PACKAGE_ID_10HZ, WAIT_TIMEOUT);
+      ROS_ERROR("Failed to start 10Hz package");
+      return false;
+    }
+    else
+    {
+      vehicle->subscribe->registerUserPackageUnpackCallback(PACKAGE_ID_10HZ, publish10HzData, this);
+      return true;
+    }
+  }
 }
 
 void
@@ -489,7 +616,8 @@ bool DJISDKNode::validateSerialDevice(LinuxSerialDevice* serialDevice)
   static const int BUFFER_SIZE = 2048;
   //! Check the serial channel for data
   uint8_t buf[BUFFER_SIZE];
-  if (!serialDevice->setSerialPureTimedRead()) {
+  if (!serialDevice->setSerialPureTimedRead())
+  {
     ROS_ERROR("Failed to set up port for timed read.\n");
     return (false);
   };
@@ -529,11 +657,11 @@ DJISDKNode::setUpM100DefaultFreq(uint8_t freq[16])
 void
 DJISDKNode::setUpA3N3DefaultFreq(uint8_t freq[16])
 {
-  freq[0]  = DataBroadcast::FREQ_400HZ;
-  freq[1]  = DataBroadcast::FREQ_400HZ;
-  freq[2]  = DataBroadcast::FREQ_400HZ;
+  freq[0]  = DataBroadcast::FREQ_100HZ;
+  freq[1]  = DataBroadcast::FREQ_100HZ;
+  freq[2]  = DataBroadcast::FREQ_100HZ;
   freq[3]  = DataBroadcast::FREQ_50HZ;
-  freq[4]  = DataBroadcast::FREQ_400HZ;
+  freq[4]  = DataBroadcast::FREQ_100HZ;
   freq[5]  = DataBroadcast::FREQ_50HZ;
   freq[6]  = DataBroadcast::FREQ_50HZ;
   freq[7]  = DataBroadcast::FREQ_50HZ;
