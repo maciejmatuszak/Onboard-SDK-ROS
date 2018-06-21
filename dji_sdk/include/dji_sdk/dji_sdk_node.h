@@ -337,6 +337,7 @@ private:
   ros::Publisher trigger_publisher;
   ros::Publisher imu_publisher;
   ros::Publisher flight_status_publisher;
+  ros::Publisher sdk_authority_status_publisher;
   ros::Publisher gps_health_publisher;
   ros::Publisher gps_position_publisher;
   ros::Publisher height_publisher;

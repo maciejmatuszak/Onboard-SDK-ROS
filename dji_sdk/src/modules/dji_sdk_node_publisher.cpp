@@ -188,6 +188,10 @@ DJISDKNode::dataBroadcastCallback()
     std_msgs::UInt8 flight_status;
     flight_status.data = fs;
     flight_status_publisher.publish(flight_status);
+
+    std_msgs::UInt8 sdk_authority;
+    sdk_authority.data = have_control_authority;
+    sdk_authority_status_publisher.publish(sdk_authority);
   }
 
   uint16_t flag_has_gimbal = 
@@ -366,6 +370,10 @@ DJISDKNode::publish50HzData(Vehicle* vehicle, RecvContainer recvFrame,
   std_msgs::UInt8 flight_status;
   flight_status.data = fs;
   p->flight_status_publisher.publish(flight_status);
+
+  std_msgs::UInt8 sdk_authority;
+  sdk_authority.data = p->have_control_authority;
+  p->sdk_authority_status_publisher.publish(sdk_authority);
 
   Telemetry::TypeMap<Telemetry::TOPIC_VELOCITY>::type v_FC =
     vehicle->subscribe->getValue<Telemetry::TOPIC_VELOCITY>();

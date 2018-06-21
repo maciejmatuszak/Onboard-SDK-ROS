@@ -273,6 +273,8 @@ DJISDKNode::initPublisher(ros::NodeHandle& nh)
   flight_status_publisher =
     nh.advertise<std_msgs::UInt8>("dji_sdk/flight_status", 10);
 
+  sdk_authority_status_publisher =
+          nh.advertise<std_msgs::UInt8>("dji_sdk/sdk_authotity_status", 10);
   /*!
    * gps_health needs to be greater than 3 for gps_position and velocity topics
    * to be trusted
