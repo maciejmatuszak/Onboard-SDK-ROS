@@ -87,8 +87,18 @@ DJISDKNode::sdkCtrlAuthorityCallback(
   dji_sdk::SDKControlAuthority::Response& response)
 {
 
+    //if using gear switch then we do not use service calls
+    if(use_gear_sw_for_authority_ctrl)
+    {
+        //fake the response
+        response.cmd_set  = DJI::OSDK::OpenProtocolCMD::CMDSet::control;
+        response.cmd_id   = 0;
+        response.ack_data = 2;
+        response.result = false;
+        ROS_WARN("SDKControlAuthority service called but use_gear_sw_for_authority_ctrl is set to true - ignoring");
+        return true;
+    }
   ROS_DEBUG("called sdkCtrlAuthorityCallback");
-
   ACK::ErrorCode ack;
   if (request.control_enable)
   {
