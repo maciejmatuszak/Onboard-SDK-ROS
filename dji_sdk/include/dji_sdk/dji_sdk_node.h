@@ -386,6 +386,7 @@ private:
   double      thrust_offset;
   double      thrust_min;
   double      thrust_max;
+  double      hard_synch_freq;
   bool use_gear_sw_for_authority_ctrl;
 
   //Indicate that SDK currently have authotity control

@@ -21,7 +21,8 @@ DJISDKNode::DJISDKNode(ros::NodeHandle& nh, ros::NodeHandle& nh_private)
     thrust_coefficient(1),
     thrust_offset(0),
     thrust_min(10),
-    thrust_max(100)
+    thrust_max(100),
+    hard_synch_freq(0.0)
 {
   nh_private.param("serial_name",   serial_device, std::string("/dev/ttyUSB0"));
   nh_private.param("baud_rate",     baud_rate, 921600);
@@ -37,6 +38,7 @@ DJISDKNode::DJISDKNode(ros::NodeHandle& nh, ros::NodeHandle& nh_private)
   nh_private.param("thrust_min",    thrust_min, thrust_min);
   nh_private.param("thrust_max",    thrust_max, thrust_max);
   nh_private.param("use_gear_sw_for_authority_ctrl", use_gear_sw_for_authority_ctrl, false);
+  nh_private.param("hard_synch_freq", hard_synch_freq, hard_synch_freq);
 
   have_control_authority = false;
   authority_control_in_progress_counter = 0;
@@ -75,6 +77,11 @@ DJISDKNode::DJISDKNode(ros::NodeHandle& nh, ros::NodeHandle& nh_private)
     {
       ROS_ERROR("initPublisher failed");
     }
+  }
+  if(hard_synch_freq > 0)
+  {
+    ROS_INFO("hard_synch_freq set to: %f", hard_synch_freq );
+    vehicle->hardSync->setSyncFreq(hard_synch_freq);
   }
 }
 
