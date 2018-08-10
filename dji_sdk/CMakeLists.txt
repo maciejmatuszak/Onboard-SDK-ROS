@@ -13,6 +13,7 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   std_msgs
   sensor_msgs
+  irq_ts_access
 )
 find_package(DJIOSDK REQUIRED)
 
@@ -119,6 +120,7 @@ catkin_package(
         geometry_msgs
         nav_msgs
         std_msgs
+        irq_ts_access
 )
 
 ###########
@@ -131,6 +133,7 @@ catkin_package(
 include_directories(
   include
   ${DJIOSDK_INCLUDE_DIRS}
+  ${irq_ts_access_INCLUDE_DIRS}
   ${catkin_INCLUDE_DIRS}
 )
 

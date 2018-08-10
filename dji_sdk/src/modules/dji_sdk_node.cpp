@@ -22,7 +22,9 @@ DJISDKNode::DJISDKNode(ros::NodeHandle& nh, ros::NodeHandle& nh_private)
     thrust_offset(0),
     thrust_min(10),
     thrust_max(100),
-    hard_synch_freq(0.0)
+    hard_synch_freq(0.0),
+    hard_sync_pin_(314),
+    irqTsSequence(0)
 {
   nh_private.param("serial_name",   serial_device, std::string("/dev/ttyUSB0"));
   nh_private.param("baud_rate",     baud_rate, 921600);
@@ -38,7 +40,9 @@ DJISDKNode::DJISDKNode(ros::NodeHandle& nh, ros::NodeHandle& nh_private)
   nh_private.param("thrust_min",    thrust_min, thrust_min);
   nh_private.param("thrust_max",    thrust_max, thrust_max);
   nh_private.param("use_gear_sw_for_authority_ctrl", use_gear_sw_for_authority_ctrl, false);
+
   nh_private.param("hard_synch_freq", hard_synch_freq, hard_synch_freq);
+  nh_private.param("hard_sync_pin", hard_sync_pin_, hard_sync_pin_);
 
   have_control_authority = false;
   authority_control_in_progress_counter = 0;
@@ -81,12 +85,38 @@ DJISDKNode::DJISDKNode(ros::NodeHandle& nh, ros::NodeHandle& nh_private)
   if(hard_synch_freq > 0)
   {
     ROS_INFO("hard_synch_freq set to: %f", hard_synch_freq );
+    if(align_time_with_FC == false)
+    {
+        ROS_WARN("Using hard Sync without setting align_time=true, timestamps will not be corrected.");
+    }
+
+    //set the output frequency
     vehicle->hardSync->setSyncFreq(hard_synch_freq);
+
+    //create handle to read timestamps
+    irqTsAccess_ = boost::make_shared<irq_ts_access::IrqTsAccess>("/dev/irq_ts");
+    try
+    {
+      irqTsAccess_->Open();
+      irqTsAccess_->AddPin(0, hard_sync_pin_, irq_ts_access::IRQ_TS_EDGE_RISING, "PIN_"  + std::to_string(hard_sync_pin_));
+    }
+    catch (std::invalid_argument &e)
+    {
+          ROS_ERROR_STREAM("UEyeCamNodelet::onInit: Unable to open irq_ts device:" << e.what());
+          throw;
+    }
+
   }
 }
 
 DJISDKNode::~DJISDKNode()
 {
+
+  if(irqTsAccess_)
+  {
+    irqTsAccess_->Close();
+  }
+
   if(!isM100())
   {
     cleanUpSubscribeFromFC();

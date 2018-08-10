@@ -15,7 +15,6 @@
 
 #define _TICK2ROSTIME(tick) (ros::Duration((double)(tick) / 1000.0))
 
-
 void
 DJISDKNode::SDKBroadcastCallback(Vehicle* vehicle, RecvContainer recvFrame,
                                  DJI::OSDK::UserData userData)
@@ -228,23 +227,16 @@ DJISDKNode::publish10HzData(Vehicle *vehicle, RecvContainer recvFrame,
   Telemetry::TimeStamp packageTimeStamp = * (reinterpret_cast<Telemetry::TimeStamp *>(data));
 
   ros::Time msg_time = ros::Time::now();
-
-  if(p->align_time_with_FC)
+  if(!p->getTimeStamp(msg_time, packageTimeStamp.time_ms))
   {
-    if(p->curr_align_state == ALIGNED)
-    {
-      msg_time = p->base_time + _TICK2ROSTIME(packageTimeStamp.time_ms);
-    }
-    else
-    {
       return;
-    }
   }
 
   //TODO: publish gps detail data if needed
   Telemetry::TypeMap<Telemetry::TOPIC_BATTERY_INFO>::type battery_info=
     vehicle->subscribe->getValue<Telemetry::TOPIC_BATTERY_INFO>();
   sensor_msgs::BatteryState msg_battery_state;
+  msg_battery_state.header.stamp = msg_time;
   msg_battery_state.capacity = battery_info.capacity;
   msg_battery_state.voltage  = battery_info.voltage;
   msg_battery_state.current  = battery_info.current;
@@ -271,6 +263,7 @@ DJISDKNode::publish10HzData(Vehicle *vehicle, RecvContainer recvFrame,
         vehicle->subscribe->getValue<Telemetry::TOPIC_RTK_POSITION_INFO>();
 
     sensor_msgs::NavSatFix rtk_position;
+    rtk_position.header.stamp = msg_time;
     rtk_position.latitude = rtk_telemetry_position.latitude;
     rtk_position.longitude = rtk_telemetry_position.longitude;
     rtk_position.altitude = rtk_telemetry_position.HFSL;
@@ -311,18 +304,10 @@ DJISDKNode::publish50HzData(Vehicle* vehicle, RecvContainer recvFrame,
   data++;
   Telemetry::TimeStamp packageTimeStamp = * (reinterpret_cast<Telemetry::TimeStamp *>(data));
 
-  ros::Time msg_time = ros::Time::now();
-
-  if(p->align_time_with_FC)
+  ros::Time msg_time;
+  if(!p->getTimeStamp(msg_time, packageTimeStamp.time_ms))
   {
-    if(p->curr_align_state == ALIGNED)
-    {
-      msg_time = p->base_time + _TICK2ROSTIME(packageTimeStamp.time_ms);
-    }
-    else
-    {
       return;
-    }
   }
 
   Telemetry::TypeMap<Telemetry::TOPIC_GPS_FUSED>::type fused_gps =
@@ -573,18 +558,10 @@ DJISDKNode::publish100HzData(Vehicle *vehicle, RecvContainer recvFrame,
   data++;
   Telemetry::TimeStamp packageTimeStamp = * (reinterpret_cast<Telemetry::TimeStamp *>(data));
 
-  ros::Time msg_time = ros::Time::now();
-
-  if(p->align_time_with_FC)
+  ros::Time msg_time;
+  if(!p->getTimeStamp(msg_time, packageTimeStamp.time_ms))
   {
-    if(p->curr_align_state == ALIGNED)
-    {
-      msg_time = p->base_time + _TICK2ROSTIME(packageTimeStamp.time_ms);
-    }
-    else
-    {
       return;
-    }
   }
 
   Telemetry::TypeMap<Telemetry::TOPIC_QUATERNION>::type quat =
@@ -663,19 +640,20 @@ DJISDKNode::publish400HzData(Vehicle *vehicle, RecvContainer recvFrame,
   Telemetry::TypeMap<Telemetry::TOPIC_HARD_SYNC>::type hardSync_FC =
     vehicle->subscribe->getValue<Telemetry::TOPIC_HARD_SYNC>();
 
-  ros::Time now_time = ros::Time::now();
-  ros::Time msg_time = now_time;
+  ros::Time msg_time(0, 0);
 
-  if(p->align_time_with_FC)
+  if (hardSync_FC.ts.flag == 1)
   {
-    p->alignRosTimeWithFlightController(now_time, packageTimeStamp.time_ms);
-    if(p->curr_align_state == ALIGNED)
+
+    p->alignRosTimeWithFlightController(msg_time, packageTimeStamp.time_ms);
+
+    if(msg_time.sec > 0)
     {
-      msg_time = p->base_time + _TICK2ROSTIME(packageTimeStamp.time_ms);
-    }
-    else
-    {
-      return;
+        sensor_msgs::TimeReference trigTime;
+        trigTime.header.stamp = msg_time;
+        trigTime.time_ref     = msg_time;
+        trigTime.source       = "FC";
+        p->trigger_publisher.publish(trigTime);
     }
   }
 
@@ -709,17 +687,66 @@ DJISDKNode::publish400HzData(Vehicle *vehicle, RecvContainer recvFrame,
   synced_imu.orientation.y = q_FLU2ENU.getY();
   synced_imu.orientation.z = q_FLU2ENU.getZ();
 
+
   p->imu_publisher.publish(synced_imu);
+}
 
-  if (hardSync_FC.ts.flag == 1)
-  {
-    sensor_msgs::TimeReference trigTime;
-    trigTime.header.stamp = msg_time;
-    trigTime.time_ref     = now_time;
-    trigTime.source       = "FC";
 
-    p->trigger_publisher.publish(trigTime);
-  }
+bool
+DJISDKNode::getTimeStamp(ros::Time &timeStamp, uint32_t a3TimeTicks)
+{
+    ros::Time msg_time;
+
+    if(align_time_with_FC)
+    {
+      if(curr_align_state == ALIGNED)
+      {
+        msg_time = base_time + _TICK2ROSTIME(a3TimeTicks);
+      }
+      else
+      {
+        return false;
+      }
+    }
+    else
+    {
+        msg_time = ros::Time::now();
+    }
+    timeStamp.sec = msg_time.sec;
+    timeStamp.nsec = msg_time.nsec;
+    return true;
+}
+
+bool DJISDKNode::getIrqTimeStamp(ros::Time &timeStamp)
+{
+    uint32_t seq;
+    long seconds, nseconds;
+    //TODO: Add try..catch
+    if(irqTsAccess_->Read(0, &seconds, &nseconds, &seq))
+    {
+        //check for missing seq
+        if(seq != irqTsSequence)
+        {
+            ROS_WARN("IRQ_TS_SEQ out of sync; missed %d entries", (seq - irqTsSequence));
+            //sync back
+             irqTsSequence = seq + 1;
+        }
+        else
+        {
+            //ready for next
+            irqTsSequence++;
+        }
+
+        //Onboard Computer time at IRQ
+        timeStamp.sec = seconds;
+        timeStamp.nsec = nseconds;
+        return true;
+    }
+    else
+    {
+        ROS_WARN_THROTTLE(1.0, "Failed to read the timestamp from irq_ts");
+    }
+    return false;
 }
 
 /*!
@@ -729,15 +756,30 @@ DJISDKNode::publish400HzData(Vehicle *vehicle, RecvContainer recvFrame,
  *         be affected by OS scheduling depending on system load.
  */
 
-void DJISDKNode::alignRosTimeWithFlightController(ros::Time now_time, uint32_t tick)
+void DJISDKNode::alignRosTimeWithFlightController(ros::Time &now_time, uint32_t tick)
 {
+  if( hard_synch_freq > 0 )
+  {
+      if(getIrqTimeStamp(now_time))
+      {
+          base_time = now_time - _TICK2ROSTIME(tick);
+          curr_align_state == ALIGNED;
+      }
+      return;
+
+  }
+  else
+  {
+      now_time = ros::Time::now();
+  }
+
   if (curr_align_state == UNALIGNED)
   {
     base_time = now_time - _TICK2ROSTIME(tick);
     curr_align_state = ALIGNING;
     ROS_INFO("[dji_sdk] Start time alignment ...");
     return;
-  }
+  } // UNALIGNED
 
   if (curr_align_state == ALIGNING)
   {
@@ -747,17 +789,21 @@ void DJISDKNode::alignRosTimeWithFlightController(ros::Time now_time, uint32_t t
 
     double dt = std::fabs((now_time - (base_time + _TICK2ROSTIME(tick))).toSec());
 
+    //delta time is acceptable
     if(dt < TIME_DIFF_CHECK )
     {
       aligned_count++;
     }
-    else if(aligned_count > 0)
+    else // delta time is NOT acceptable
     {
-      base_time = now_time - _TICK2ROSTIME(tick);
-      ROS_INFO("[dji_sdk] ***** Time difference out of bound after %d samples, retried %d times, dt=%.3f... *****",
-               aligned_count, retry_count, dt);
-      aligned_count = 0;
-      retry_count++;
+        if(aligned_count > 0)
+        {
+          base_time = now_time - _TICK2ROSTIME(tick);
+          ROS_INFO("[dji_sdk] ***** Time difference out of bound after %d samples, retried %d times, dt=%.3f... *****",
+                   aligned_count, retry_count, dt);
+          aligned_count = 0;
+          retry_count++;
+        }
     }
 
     if(aligned_count > STABLE_ALIGNMENT_COUNT)
@@ -767,7 +813,7 @@ void DJISDKNode::alignRosTimeWithFlightController(ros::Time now_time, uint32_t t
     }
 
     return;
-  }
+  } // ALIGNING
 }
 
 #ifdef ADVANCED_SENSING

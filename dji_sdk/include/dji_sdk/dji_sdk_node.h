@@ -12,6 +12,9 @@
 #ifndef DJI_SDK_NODE_MAIN_H
 #define DJI_SDK_NODE_MAIN_H
 
+#include <boost/thread.hpp>
+#include <irq_ts_access/irq_ts_access.h>
+
 //! ROS
 #include <ros/ros.h>
 #include <tf/tf.h>
@@ -211,6 +214,13 @@ private:
   //! hard sync service callback
   bool setHardsyncCallback(dji_sdk::SetHardSync::Request&  request,
                            dji_sdk::SetHardSync::Response& response);
+
+  bool getTimeStamp(ros::Time &timeStamp, uint32_t a3TimeTicks);
+  bool getIrqTimeStamp(ros::Time &timeStamp);
+  int hard_sync_pin_;
+  uint32_t irqTsSequence;
+  boost::shared_ptr<irq_ts_access::IrqTsAccess> irqTsAccess_;
+
 
 #ifdef ADVANCED_SENSING
   //! stereo image service callback
@@ -423,7 +433,7 @@ private:
 
   bool local_pos_ref_set;
 
-  void alignRosTimeWithFlightController(ros::Time now_time, uint32_t tick);
+  void alignRosTimeWithFlightController(ros::Time &now_time, uint32_t tick);
   void setUpM100DefaultFreq(uint8_t freq[16]);
   void setUpA3N3DefaultFreq(uint8_t freq[16]);
   void gpsConvertENU(double &ENU_x, double &ENU_y,
