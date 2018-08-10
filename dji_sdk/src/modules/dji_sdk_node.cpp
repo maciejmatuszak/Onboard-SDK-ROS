@@ -53,6 +53,29 @@ DJISDKNode::DJISDKNode(ros::NodeHandle& nh, ros::NodeHandle& nh_private)
   //! RTK support check
   rtkSupport = false;
 
+  if(hard_synch_freq > 0)
+  {
+    ROS_INFO("hard_synch_freq set to: %f", hard_synch_freq );
+    if(align_time_with_FC == false)
+    {
+        ROS_WARN("Using hard Sync without setting align_time=true, timestamps will not be corrected.");
+    }
+
+    //create handle to read timestamps
+    irqTsAccess_ = boost::make_shared<irq_ts_access::IrqTsAccess>("/dev/irq_ts");
+    try
+    {
+      irqTsAccess_->Open();
+      irqTsAccess_->AddPin(0, hard_sync_pin_, true, "PIN_"  + std::to_string(hard_sync_pin_));
+    }
+    catch (std::invalid_argument &e)
+    {
+          ROS_ERROR_STREAM("UEyeCamNodelet::onInit: Unable to open irq_ts device:" << e.what());
+          throw;
+    }
+
+  }
+
   // @todo need some error handling for init functions
   //! @note parsing launch file to get environment parameters
   if (!initVehicle(nh_private))
@@ -82,31 +105,13 @@ DJISDKNode::DJISDKNode(ros::NodeHandle& nh, ros::NodeHandle& nh_private)
       ROS_ERROR("initPublisher failed");
     }
   }
+
   if(hard_synch_freq > 0)
   {
-    ROS_INFO("hard_synch_freq set to: %f", hard_synch_freq );
-    if(align_time_with_FC == false)
-    {
-        ROS_WARN("Using hard Sync without setting align_time=true, timestamps will not be corrected.");
-    }
-
     //set the output frequency
     vehicle->hardSync->setSyncFreq(hard_synch_freq);
-
-    //create handle to read timestamps
-    irqTsAccess_ = boost::make_shared<irq_ts_access::IrqTsAccess>("/dev/irq_ts");
-    try
-    {
-      irqTsAccess_->Open();
-      irqTsAccess_->AddPin(0, hard_sync_pin_, irq_ts_access::IRQ_TS_EDGE_RISING, "PIN_"  + std::to_string(hard_sync_pin_));
-    }
-    catch (std::invalid_argument &e)
-    {
-          ROS_ERROR_STREAM("UEyeCamNodelet::onInit: Unable to open irq_ts device:" << e.what());
-          throw;
-    }
-
   }
+
 }
 
 DJISDKNode::~DJISDKNode()

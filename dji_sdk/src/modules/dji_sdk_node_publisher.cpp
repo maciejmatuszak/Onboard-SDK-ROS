@@ -656,6 +656,13 @@ DJISDKNode::publish400HzData(Vehicle *vehicle, RecvContainer recvFrame,
         p->trigger_publisher.publish(trigTime);
     }
   }
+  else
+  {
+      if(!p->getTimeStamp(msg_time, packageTimeStamp.time_ms))
+      {
+          return;
+      }
+  }
 
   sensor_msgs::Imu synced_imu;
 
@@ -727,7 +734,7 @@ bool DJISDKNode::getIrqTimeStamp(ros::Time &timeStamp)
         //check for missing seq
         if(seq != irqTsSequence)
         {
-            ROS_WARN("IRQ_TS_SEQ out of sync; missed %d entries", (seq - irqTsSequence));
+            ROS_WARN("IRQ_TS_SEQ out of sync;seq: %d; missed %d entries", seq,  (seq - irqTsSequence));
             //sync back
              irqTsSequence = seq + 1;
         }
