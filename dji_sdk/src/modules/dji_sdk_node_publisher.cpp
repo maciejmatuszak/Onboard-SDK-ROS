@@ -770,7 +770,7 @@ void DJISDKNode::alignRosTimeWithFlightController(ros::Time &now_time, uint32_t 
       if(getIrqTimeStamp(now_time))
       {
           base_time = now_time - _TICK2ROSTIME(tick);
-          curr_align_state == ALIGNED;
+          curr_align_state = ALIGNED;
       }
       return;
 
