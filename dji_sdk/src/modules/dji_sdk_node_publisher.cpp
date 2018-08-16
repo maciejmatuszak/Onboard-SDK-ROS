@@ -13,6 +13,8 @@
 #include <tf/tf.h>
 #include <sensor_msgs/Joy.h>
 
+using namespace boost::accumulators;
+
 #define _TICK2ROSTIME(tick) (ros::Duration((double)(tick) / 1000.0))
 
 void
@@ -769,8 +771,30 @@ void DJISDKNode::alignRosTimeWithFlightController(ros::Time &now_time, uint32_t 
   {
       if(getIrqTimeStamp(now_time))
       {
-          base_time = now_time - _TICK2ROSTIME(tick);
-          curr_align_state = ALIGNED;
+          base_timeAcc((now_time - _TICK2ROSTIME(tick)).toSec());
+          double bTime = rolling_mean(base_timeAcc);
+          double variance_usec = (variance(base_timeAcc)) * 1000000.0;
+          base_time = ros::Time(bTime);
+
+          //varianve below 10usec then we are stable
+          if(variance_usec < 10.0)
+          {
+              if(curr_align_state !=  ALIGNED)
+              {
+                  curr_align_state =  ALIGNED;
+                  ROS_INFO("Hard Sunch clock Aligned with FC");
+              }
+          }
+          else
+          {
+              if(curr_align_state !=  ALIGNING)
+              {
+                  curr_align_state =  ALIGNING;
+                  ROS_INFO("Hard Sunch clock Aligning with FC...");
+              }
+              ROS_INFO_THROTTLE(0.5, "Hard Sync Aligning - variance: %.6f [usec]", variance_usec);
+
+          }
       }
       return;
 

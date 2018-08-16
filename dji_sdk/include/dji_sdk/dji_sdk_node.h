@@ -13,6 +13,9 @@
 #define DJI_SDK_NODE_MAIN_H
 
 #include <boost/thread.hpp>
+#include <boost/accumulators/accumulators.hpp>
+#include <boost/accumulators/statistics.hpp>
+#include <boost/accumulators/statistics/rolling_mean.hpp>
 #include <irq_ts_access/irq_ts_access.h>
 
 //! ROS
@@ -84,6 +87,7 @@
 #define RAD2DEG(RAD) ((RAD) * (180.0) / (C_PI))
 
 using namespace DJI::OSDK;
+using namespace boost::accumulators;
 
 class DJISDKNode
 {
@@ -428,6 +432,7 @@ private:
   static double constexpr TIME_DIFF_ALERT = 0.020;
 
   ros::Time base_time;
+  accumulator_set<double, stats<tag::rolling_mean, tag::variance> > base_timeAcc;
 
   bool align_time_with_FC;
 

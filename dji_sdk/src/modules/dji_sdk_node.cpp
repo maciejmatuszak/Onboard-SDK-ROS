@@ -12,6 +12,7 @@
 #include <dji_sdk/dji_sdk_node.h>
 
 using namespace DJI::OSDK;
+using namespace boost::accumulators;
 
 DJISDKNode::DJISDKNode(ros::NodeHandle& nh, ros::NodeHandle& nh_private)
   : telemetry_from_fc(USE_BROADCAST),
@@ -24,7 +25,8 @@ DJISDKNode::DJISDKNode(ros::NodeHandle& nh, ros::NodeHandle& nh_private)
     thrust_max(100),
     hard_synch_freq(0.0),
     hard_sync_pin_(314),
-    irqTsSequence(0)
+    irqTsSequence(0),
+    base_timeAcc(tag::rolling_window::window_size = 50)
 {
   nh_private.param("serial_name",   serial_device, std::string("/dev/ttyUSB0"));
   nh_private.param("baud_rate",     baud_rate, 921600);
@@ -606,7 +608,7 @@ DJISDKNode::initDataSubscribeFromFC()
   };
   int nTopic400Hz = sizeof(topicList400Hz) / sizeof(topicList400Hz[0]);
   if (vehicle->subscribe->initPackageFromTopicList(PACKAGE_ID_400HZ, nTopic400Hz,
-                                                   topicList400Hz, 1, 400))
+                                                   topicList400Hz, 1, 200))
   {
     ack = vehicle->subscribe->startPackage(PACKAGE_ID_400HZ, WAIT_TIMEOUT);
     if(ACK::getError(ack))
